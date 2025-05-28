@@ -7,6 +7,7 @@ class FraudLabel:
         self.color = color
         self.createAt = createAt
 
+    #convert from FraudLabel object to dict
     def to_dict(self):
         return {
             'id': self.id,
@@ -16,6 +17,8 @@ class FraudLabel:
             'createAt': self.createAt
         }
 
+
+    #convert from dict to FraudLabel object
     @classmethod
     def from_dict(cls, data):
         fraud_label = cls()

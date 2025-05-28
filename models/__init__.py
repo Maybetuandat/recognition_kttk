@@ -1,7 +1,13 @@
 from .Model import Model
-from .Detection import PhaseDetection
+from .Detection import Detection
+from .TrainInfo import TrainInfo
+from .ResultDetection import ResultDetection
+from .FraudLabel import FraudLabel
 
 __all__ = [
     'Model',
-    'PhaseDetection',
+    'Detection',
+    'TrainInfo',
+    'ResultDetection',
+    'FraudLabel'
 ]

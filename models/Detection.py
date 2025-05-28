@@ -40,7 +40,7 @@ class Detection:
         detection.description = data.get('description')
         
         time_detect = data.get('timeDetect')
-        if time_detect and isinstance(time_detect, str):
+        if time_detect and isinstance(time_detect, str):   #kiem tra xem time_detect la string
             try:
                 detection.timeDetect = datetime.strptime(
                     time_detect, '%Y-%m-%d %H:%M:%S')
