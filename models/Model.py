@@ -1,14 +1,14 @@
 from datetime import datetime
-from utils.enums import ModelType
+
 from .TrainInfo import TrainInfo
 
 
 class Model:
-    def __init__(self, id=None, name=None, type=None, version=None,
+    def __init__(self, id=None, name=None,  version=None,
                  description=None, lastUpdate=None, trainInfo=None, modelUrl=None):
         self.id = id  
         self.name = name  
-        self.type = type  
+        
         self.version = version
         self.description = description
         self.lastUpdate = lastUpdate if lastUpdate else datetime.now()
@@ -22,7 +22,7 @@ class Model:
         model_dict = {
             'id': self.id, 
             'name': self.name,  
-            'type': self.type.value if isinstance(self.type, ModelType) else self.type,  
+            
             'version': self.version,
             'description': self.description,
             'lastUpdate': self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S') if isinstance(self.lastUpdate, datetime) else self.lastUpdate,
@@ -44,14 +44,6 @@ class Model:
 
         model.id = data.get('id')  
         model.name = data.get('name') 
-
-        model_type = data.get('type') 
-        if model_type:
-            try:
-                model.type = ModelType(model_type)
-            except ValueError:
-                model.type = model_type
-
         model.version = data.get('version')
         model.description = data.get('description')
         model.modelUrl = data.get('modelUrl')  
