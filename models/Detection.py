@@ -1,0 +1,63 @@
+from datetime import datetime
+
+
+class Detection:
+    def __init__(self, id=None, model=None, timeDetect=None, description=None,  result=None):
+        self.id = id  
+        self.model = model
+        self.timeDetect = timeDetect if timeDetect else datetime.now()
+        self.description = description
+        
+        self.result = result if result else []
+
+    def to_dict(self):
+        
+        detection_dict = {
+            'id': self.id,  
+            'timeDetect': self.timeDetect.strftime('%Y-%m-%d %H:%M:%S') if isinstance(self.timeDetect, datetime) else self.timeDetect,
+            'description': self.description,
+            
+        }
+        
+        if self.model:
+            detection_dict['model'] = self.model.to_dict() if hasattr(self.model, 'to_dict') else self.model
+            
+        if self.result:
+            detection_dict['result'] = [
+                res.to_dict() if hasattr(res, 'to_dict') else res
+                for res in self.result
+            ]
+        return detection_dict
+
+    @classmethod
+    def from_dict(cls, data):
+        
+        from .Model import Model
+        from .ResultDetection import ResultDetection  
+        
+        detection = cls()
+        detection.id = data.get('id')  
+        detection.description = data.get('description')
+        
+        time_detect = data.get('timeDetect')
+        if time_detect and isinstance(time_detect, str):
+            try:
+                detection.timeDetect = datetime.strptime(
+                    time_detect, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                detection.timeDetect = time_detect
+        else:
+            detection.timeDetect = time_detect
+        model = data.get('model')
+        if model:
+            detection.model = Model.from_dict(
+                model) if isinstance(model, dict) else model
+        result = data.get('result')
+        if result:
+            detection.result = [
+                ResultDetection.from_dict(res) if isinstance(
+                    res, dict) else res
+                for res in result
+            ]
+
+        return detection

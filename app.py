@@ -81,7 +81,7 @@ def start_phase_detection():
         if load_yolo_model() is None:
             return jsonify({'success': False, 'message': 'Không thể tải mô hình YOLOv8'})
 
-        from models.phase_detection import PhaseDetection
+        from models.Detection import PhaseDetection
         phase = PhaseDetection(
             description=description,
             timeDetect=datetime.now(),
@@ -234,8 +234,8 @@ def detect_objects():
         description = ", ".join(
             detection_labels) if detection_labels else "Không phát hiện hành vi gian lận"
 
-        from models.detect_result import DetectResult
-        from models.fraud import Fraud
+        from models.ResultDetection import DetectResult
+        from models.FraudLabel import Fraud
 
         unique_frauds = list(set(fraud_list))
         fraud_objects = []

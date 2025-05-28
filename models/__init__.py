@@ -1,5 +1,5 @@
-from .model import Model
-from .phase_detection import PhaseDetection
+from .Model import Model
+from .Detection import PhaseDetection
 
 __all__ = [
     'Model',
