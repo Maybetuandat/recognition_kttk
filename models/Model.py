@@ -1,42 +1,29 @@
 from datetime import datetime
 
-from .TrainInfo import TrainInfo
-
-
+from models import TrainInfo
 class Model:
-    def __init__(self, id=None, name=None,  version=None,
-                 description=None, lastUpdate=None, trainInfo=None, modelUrl=None):
-        self.id = id  
-        self.name = name  
-        
+    def __init__(self, id = None, name = None, version = None, description = None, lastUpdate = None, trainInfo = None, modelUrl = None):
+        self.id = id
+        self.name = name
         self.version = version
-        self.description = description
+        self.description= description
         self.lastUpdate = lastUpdate if lastUpdate else datetime.now()
         self.trainInfo = trainInfo
-        self.modelUrl = modelUrl  
-
-    def get_train_info(self):        
-        return self.trainInfo
+        self.modelUrl = modelUrl
     def to_dict(self):
-        
-        model_dict = {
-            'id': self.id, 
-            'name': self.name,  
-            
-            'version': self.version,
-            'description': self.description,
-            'lastUpdate': self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S') if isinstance(self.lastUpdate, datetime) else self.lastUpdate,
-            'modelUrl': self.modelUrl 
+        dict = {
+            'id': self.id,
+            'name': self.name, 
+            'version': self.version, 
+            'description': self.description, 
+            'lastUpdate': self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S') if isinstance(self.lastUpdate, datetime) else self.lastUpdate,   #chuyen thanh string 
+            'modelUrl': self.modelUrl
+
         }
-
         if self.trainInfo:
-            model_dict['trainInfo'] = self.trainInfo.to_dict() if hasattr(
-                self.trainInfo, 'to_dict') else self.trainInfo
-            model_dict['accuracy'] = self.trainInfo.accuracy if hasattr(
-                self.trainInfo, 'accuracy') else None
-
-        return model_dict
-
+            dict['trainInfo'] = self.trainInfo.to_dict() if hasattr(self.trainInfo, 'to_dict') else self.trainInfo
+            dict['accuracy'] = self.trainInfo.accuracy if hasattr(self.trainInfo, 'accuracy') else None
+        return dict
     @classmethod
     def from_dict(cls, data):
        
@@ -47,7 +34,6 @@ class Model:
         model.version = data.get('version')
         model.description = data.get('description')
         model.modelUrl = data.get('modelUrl')  
-
         last_update = data.get('lastUpdate')
         if last_update and isinstance(last_update, str):
             try:
@@ -66,3 +52,4 @@ class Model:
                 model.trainInfo = train_info_data
 
         return model
+

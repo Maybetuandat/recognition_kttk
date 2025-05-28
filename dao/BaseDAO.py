@@ -15,7 +15,6 @@ class BaseDAO(ABC):
         }
     
     def get_connection(self):
-        """Create and return a database connection"""
         try:
             connection = mysql.connector.connect(**self.config)
             return connection
@@ -24,11 +23,9 @@ class BaseDAO(ABC):
             return None
     
     def execute_query(self, query, params=None):
-        """Execute a query that modifies data (INSERT, UPDATE, DELETE)"""
         connection = self.get_connection()
         if not connection:
             return False
-        
         try:
             cursor = connection.cursor()
             if params:
@@ -36,8 +33,6 @@ class BaseDAO(ABC):
             else:
                 cursor.execute(query)
             connection.commit()
-            
-            # Return last insert id for INSERT operations
             if query.strip().upper().startswith('INSERT'):
                 return cursor.lastrowid
             return True
@@ -51,7 +46,6 @@ class BaseDAO(ABC):
             connection.close()
     
     def fetch_all(self, query, params=None):
-        """Execute a SELECT query and return all results"""
         connection = self.get_connection()
         if not connection:
             return []
@@ -71,7 +65,6 @@ class BaseDAO(ABC):
             connection.close()
     
     def fetch_one(self, query, params=None):
-        """Execute a SELECT query and return one result"""
         connection = self.get_connection()
         if not connection:
             return None

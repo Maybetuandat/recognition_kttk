@@ -16,29 +16,27 @@ class ModelService(BaseService):
         self.train_info_service = TrainInfoService()
     
     def create(self, data, model_file=None):
-        """Create a new model record"""
-        # Validate required fields
         self.validate_data(data, required_fields=['name', 'version'])
         
-        # Check if model with same name and version exists
+        
         existing_models = self.dao.find_by_name(data['name'])
         for model in existing_models:
             if model.version == data['version']:
                 raise ValueError(f"Model {data['name']} version {data['version']} already exists")
         
-        # Create train info if provided
+        
         train_info = None
         if 'trainInfo' in data and data['trainInfo']:
             train_info = self.train_info_service.create(data['trainInfo'])
         
-        # Handle model file upload
+        
         model_url = None
         if model_file:
             model_url = self._save_model_file(model_file, data['name'], data['version'])
         elif 'modelUrl' in data:
             model_url = data['modelUrl']
         
-        # Create model
+        
         model = Model(
             name=data['name'],
             version=data['version'],
@@ -48,7 +46,7 @@ class ModelService(BaseService):
             modelUrl=model_url
         )
         
-        # Insert to database
+        
         model_id = self.dao.insert(model)
         if model_id:
             model.id = model_id
@@ -63,7 +61,7 @@ class ModelService(BaseService):
         raise Exception("Failed to create model")
     
     def update(self, id, data, model_file=None):
-        """Update an existing model record"""
+        
         # Check if exists
         existing = self.dao.find_by_id(id)
         if not existing:
@@ -76,7 +74,7 @@ class ModelService(BaseService):
                 if model.version == data['version'] and model.id != id:
                     raise ValueError(f"Version {data['version']} already exists for model {existing.name}")
         
-        # Update fields
+        
         if 'name' in data:
             existing.name = data['name']
         
@@ -111,7 +109,7 @@ class ModelService(BaseService):
         raise Exception("Failed to update model")
     
     def delete(self, id):
-        """Delete a model record"""
+        
         # Check if exists
         existing = self.dao.find_by_id(id)
         if not existing:
@@ -136,29 +134,29 @@ class ModelService(BaseService):
         raise Exception("Failed to delete model")
     
     def get_by_id(self, id):
-        """Get a model record by ID"""
+        
         model = self.dao.find_by_id(id)
         if not model:
             raise ValueError(f"Model with ID {id} not found")
         return model
     
     def get_all(self):
-        """Get all model records"""
+        
         return self.dao.find_all()
     
     def get_by_name(self, name):
-        """Get models by name"""
+        
         return self.dao.find_by_name(name)
     
     def get_latest_version(self, name):
-        """Get the latest version of a model"""
+        
         model = self.dao.find_latest_version(name)
         if not model:
             raise ValueError(f"No model found with name {name}")
         return model
     
     def compare_versions(self, name):
-        """Compare all versions of a model"""
+        
         models = self.dao.find_by_name(name)
         if not models:
             raise ValueError(f"No models found with name {name}")
@@ -186,7 +184,7 @@ class ModelService(BaseService):
         return comparisons
     
     def _save_model_file(self, file, model_name, version):
-        """Save uploaded model file"""
+        
         # Create model directory
         model_dir = os.path.join(Config.BASE_DIR, Config.MODEL_FOLDER)
         if not os.path.exists(model_dir):
@@ -204,7 +202,7 @@ class ModelService(BaseService):
         return os.path.join(Config.MODEL_FOLDER, filename)
     
     def _delete_model_file(self, model_url):
-        """Delete model file"""
+        
         if not model_url:
             return
         

@@ -19,7 +19,7 @@ class Config:
     
     # Upload and storage configurations
     UPLOAD_FOLDER = 'uploads'
-    MODEL_FOLDER = 'models'
+    MODEL_FOLDER = 'uploads/models'
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB
     
     # Detection configurations

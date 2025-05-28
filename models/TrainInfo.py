@@ -16,7 +16,7 @@ class TrainInfo:
 
     def to_dict(self):
         train_info_dict = {
-            'idInfo': self.idInfo,
+            'id': self.id,
             'epoch': self.epoch,
             'learningRate': self.learningRate,
             'batchSize': self.batchSize,
