@@ -1,5 +1,6 @@
 import os
 import shutil
+from ultralytics import YOLO
 from datetime import datetime
 from services.BaseService import BaseService
 from services.TrainInfoService import TrainInfoService
@@ -13,9 +14,11 @@ class ModelService(BaseService):
     def __init__(self):
         super().__init__()
         self.dao = ModelDAO()
+        self.loaded_models = {}
         self.train_info_service = TrainInfoService()
     
     def create(self, data, model_file=None):
+        #check xem trong form gui den co cac thuoc tinh nay khong 
         self.validate_data(data, required_fields=['name', 'version'])
         
         
@@ -62,7 +65,7 @@ class ModelService(BaseService):
     
     def update(self, id, data, model_file=None):
         
-        # Check if exists
+        
         existing = self.dao.find_by_id(id)
         if not existing:
             raise ValueError(f"Model with ID {id} not found")
@@ -109,98 +112,43 @@ class ModelService(BaseService):
         raise Exception("Failed to update model")
     
     def delete(self, id):
-        
-        # Check if exists
         existing = self.dao.find_by_id(id)
         if not existing:
             raise ValueError(f"Model with ID {id} not found")
-        
-        # Check if used by any detection
         from dao.DetectionDAO import DetectionDAO
         detection_dao = DetectionDAO()
         detections = detection_dao.find_by_model_id(id)
-        
         if detections:
             raise ValueError(f"Cannot delete model. It is used by {len(detections)} detections")
-        
-        # Delete model file if exists
         if existing.modelUrl:
             self._delete_model_file(existing.modelUrl)
-        
-        # Delete (will also delete associated train info)
         if self.dao.delete(id):
             return True
-        
         raise Exception("Failed to delete model")
     
     def get_by_id(self, id):
-        
         model = self.dao.find_by_id(id)
         if not model:
             raise ValueError(f"Model with ID {id} not found")
         return model
-    
     def get_all(self):
-        
         return self.dao.find_all()
-    
-    def get_by_name(self, name):
-        
-        return self.dao.find_by_name(name)
-    
-    def get_latest_version(self, name):
-        
-        model = self.dao.find_latest_version(name)
-        if not model:
-            raise ValueError(f"No model found with name {name}")
-        return model
-    
-    def compare_versions(self, name):
-        
-        models = self.dao.find_by_name(name)
-        if not models:
-            raise ValueError(f"No models found with name {name}")
-        
-        # Sort by version
-        models.sort(key=lambda x: x.version, reverse=True)
-        
-        comparisons = []
-        for model in models:
-            comparison = {
-                'id': model.id,
-                'version': model.version,
-                'lastUpdate': model.lastUpdate,
-                'description': model.description
-            }
-            
-            if model.trainInfo:
-                comparison['accuracy'] = model.trainInfo.accuracy
-                comparison['mae'] = model.trainInfo.mae
-                comparison['mse'] = model.trainInfo.mse
-                comparison['trainTime'] = model.trainInfo.timeTrain
-            
-            comparisons.append(comparison)
-        
-        return comparisons
-    
     def _save_model_file(self, file, model_name, version):
-        
-        # Create model directory
+        # tao directory neu chua co 
         model_dir = os.path.join(Config.BASE_DIR, Config.MODEL_FOLDER)
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         
-        # Generate filename
+        #tao ten 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{model_name}_v{version}_{timestamp}.pt"
         filepath = os.path.join(model_dir, filename)
         
-        # Save file
+        
         file.save(filepath)
         
-        # Return relative path
+        
         return os.path.join(Config.MODEL_FOLDER, filename)
-    
     def _delete_model_file(self, model_url):
         
         if not model_url:
@@ -209,3 +157,25 @@ class ModelService(BaseService):
         filepath = os.path.join(Config.BASE_DIR, model_url)
         if os.path.exists(filepath):
             os.remove(filepath)
+    def load_model(self, model_id):
+        
+        if model_id in self.loaded_models:
+            return self.loaded_models[model_id]
+        model_info = self.get_by_id(model_id)
+        if not model_info.modelUrl:
+            raise ValueError(f"Model {model_info.name} has no model file")
+        
+        # Load YOLO model
+        model_path = os.path.join(Config.BASE_DIR, model_info.modelUrl)
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+        
+        try:
+            yolo_model = YOLO(model_path)
+            self.loaded_models[model_id] = {
+                'model': yolo_model,
+                'info': model_info
+            }
+            return self.loaded_models[model_id]
+        except Exception as e:
+            raise Exception(f"Failed to load YOLO model: {str(e)}")
