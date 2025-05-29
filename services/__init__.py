@@ -5,12 +5,15 @@ from .TrainInfoService import TrainInfoService
 from .ModelService import ModelService
 from .DetectionService import DetectionService
 from .FraudLabelService import FraudLabelService
-
+from .VideoDetectionService import VideoDetectionService
+from .FileStorageService import FileStorageService
 
 __all__ = [
     'BaseService',
     'TrainInfoService',
     'ModelService',
     'DetectionService',
-    'FraudLabelService'
+    'FraudLabelService',
+    'VideoDetectionService',
+    'FileStorageService'
 ]

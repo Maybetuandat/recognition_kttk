@@ -16,34 +16,11 @@ class DetectionService(BaseService):
         self.model_service = ModelService()
         self.result_dao = ResultDetectionDAO()
     
-    def create(self, data):
-        """Create a new detection record"""
-        # Validate required fields
-        self.validate_data(data, required_fields=['modelId'])
-        
-        # Get model
-        model = self.model_service.get_by_id(data['modelId'])
-        
-        # Create detection
-        detection = Detection(
-            model=model,
-            timeDetect=datetime.now(),
-            description=data.get('description')
-        )
-        
-        # Handle result detections if provided
-        if 'results' in data and data['results']:
-            detection.result = []
-            for result_data in data['results']:
-                result = self._create_result_detection(result_data)
-                detection.result.append(result)
-        
-        # Insert to database
+    def create(self, detection):
         detection_id = self.dao.insert(detection)
         if detection_id:
             detection.id = detection_id
             return detection
-        
         raise Exception("Failed to create detection")
     
     def update(self, id, data):
@@ -118,10 +95,8 @@ class DetectionService(BaseService):
         
         return self.dao.find_by_date_range(start_date, end_date)
     
-    def add_result(self, detection_id, result_data):
-        """Add a result to an existing detection"""
-        # Verify detection exists
-        detection = self.get_by_id(detection_id)
+    def add_result(self, detection, result_data):
+       
         
         # Create result detection
         result = self._create_result_detection(result_data)

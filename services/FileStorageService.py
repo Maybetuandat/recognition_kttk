@@ -6,7 +6,6 @@ from config.config import Config
 
 
 class FileStorageService:
-    """Service for handling file storage operations"""
     
     def __init__(self):
         self.base_dir = Config.BASE_DIR
@@ -25,7 +24,6 @@ class FileStorageService:
         self.allowed_image_extensions = {'jpg', 'jpeg', 'png', 'bmp', 'gif'}
     
     def _create_directories(self):
-        """Create all necessary directories"""
         directories = [
             self.upload_dir,
             self.video_dir,
@@ -47,16 +45,6 @@ class FileStorageService:
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.allowed_image_extensions
     
     def save_video(self, video_file, prefix=None):
-        """
-        Save uploaded video file
-        
-        Args:
-            video_file: FileStorage object from Flask
-            prefix: Optional prefix for filename
-            
-        Returns:
-            tuple: (absolute_path, relative_path) of saved file
-        """
         if not video_file or video_file.filename == '':
             raise ValueError("No video file provided")
         
@@ -82,18 +70,6 @@ class FileStorageService:
         return absolute_path, relative_path
     
     def save_frame(self, frame, detection_id, frame_number, subfolder=None):
-        """
-        Save a single frame from video detection
-        
-        Args:
-            frame: OpenCV frame (numpy array)
-            detection_id: ID of the detection
-            frame_number: Frame number in video
-            subfolder: Optional subfolder name
-            
-        Returns:
-            tuple: (absolute_path, relative_path) of saved frame
-        """
         import cv2
         
         # Create detection-specific directory
@@ -120,20 +96,8 @@ class FileStorageService:
         return absolute_path, relative_path
     
     def save_flagged_frame(self, frame, frame_number, timestamp_suffix=True):
-        """
-        Save a flagged frame (frames with abnormal detections)
-        
-        Args:
-            frame: OpenCV frame (numpy array)
-            frame_number: Frame number in video
-            timestamp_suffix: Whether to add timestamp to filename
-            
-        Returns:
-            tuple: (absolute_path, relative_path) of saved frame
-        """
+        prefixFilename = "http://localhost:5000"
         import cv2
-        
-        # Generate filename
         if timestamp_suffix:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
             frame_filename = f"frame_{frame_number}_{timestamp}.jpg"
@@ -148,7 +112,7 @@ class FileStorageService:
         # Generate relative path
         relative_path = f"/uploads/flagged_frames/{frame_filename}"
         
-        return absolute_path, relative_path
+        return relative_path, prefixFilename + relative_path
     
     def save_visualization(self, image, base_name):
         """
