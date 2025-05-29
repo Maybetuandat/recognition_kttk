@@ -22,6 +22,8 @@ class VideoDetectionService:
         model_data = self.model_service.load_model(detection.model.id)
         yolo_model = model_data['model']
         model_info = model_data['info']
+
+        
         
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -55,9 +57,9 @@ class VideoDetectionService:
                 continue
             
             # Run detection
-            #result se bao gom boxes: toa do cua cac bounding box,class_id, class_name, confidence
-            results = yolo_model(frame, conf=self.detection.confidence_threshold)
             
+            results = yolo_model(frame, conf=self.detection.confidence_threshold)
+            self._export_results_to_json(results, frame_count)
             # Extract detections
             #         'class_id': int(box.cls[0]),
             #         'class_name': yolo_model.names[int(box.cls[0])],
@@ -79,7 +81,6 @@ class VideoDetectionService:
             # Save frame and detections
             self._save_frame_detections(frame, frame_results, frame_count, cap.get(cv2.CAP_PROP_FPS))    
             previous_detections = current_detections
-
     def _extract_detections(self, results, yolo_model):
         detections = []
         if results[0].boxes is not None:
@@ -111,8 +112,6 @@ class VideoDetectionService:
             
             result = {
                 'confidence': det['confidence'],
-                'classId': det['class_id'],
-                'className': det['class_name'],
                 'listFraud': fraud_labels
             }
             

@@ -14,11 +14,16 @@ class DetectionDAO(BaseDAO):
         """Create detection table if not exists"""
         query = """
         CREATE TABLE IF NOT EXISTS detection (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            model_id INT,
-            time_detect DATETIME,
-            description TEXT,
-            FOREIGN KEY (model_id) REFERENCES model(id) ON DELETE SET NULL
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        model_id INT,
+        time_detect DATETIME,
+        description TEXT,
+        confidence_threshold FLOAT,
+        frame_skip INT,
+        video_url VARCHAR(500),
+        similarity_threshold FLOAT,
+        
+        FOREIGN KEY (model_id) REFERENCES model(id) ON DELETE SET NULL
         )
         """
         self.execute_query(query)

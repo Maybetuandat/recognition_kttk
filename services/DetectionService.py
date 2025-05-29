@@ -101,6 +101,7 @@ class DetectionService(BaseService):
         # Create result detection
         result = self._create_result_detection(result_data)
         result.detection = detection
+        result.listFraud = result_data.lisFraud
         
         # Insert result
         result_id = self.result_dao.insert(result)
@@ -110,41 +111,7 @@ class DetectionService(BaseService):
         
         raise Exception("Failed to add result to detection")
     
-    def update_result(self, result_id, result_data):
-        """Update a specific result detection"""
-        # Check if exists
-        existing = self.result_dao.find_by_id(result_id)
-        if not existing:
-            raise ValueError(f"Result detection with ID {result_id} not found")
-        
-        # Update fields
-        if 'imageUrl' in result_data:
-            existing.imageUrl = result_data['imageUrl']
-        
-        if 'bboxX' in result_data:
-            existing.bboxX = result_data['bboxX']
-        if 'bboxY' in result_data:
-            existing.bboxY = result_data['bboxY']
-        if 'bboxWidth' in result_data:
-            existing.bboxWidth = result_data['bboxWidth']
-        if 'bboxHeight' in result_data:
-            existing.bboxHeight = result_data['bboxHeight']
-        
-        if 'confidence' in result_data:
-            existing.confidence = result_data['confidence']
-        if 'classId' in result_data:
-            existing.classId = result_data['classId']
-        if 'className' in result_data:
-            existing.className = result_data['className']
-        
-        if 'listFraud' in result_data:
-            existing.listFraud = result_data['listFraud']
-        
-        # Update in database
-        if self.result_dao.update(existing):
-            return existing
-        
-        raise Exception("Failed to update result detection")
+  
     
     def delete_result(self, result_id):
         """Delete a specific result detection"""
@@ -222,8 +189,6 @@ class DetectionService(BaseService):
             bboxWidth=data.get('bboxWidth'),
             bboxHeight=data.get('bboxHeight'),
             confidence=data.get('confidence'),
-            classId=data.get('classId'),
-            className=data.get('className'),
             listFraud=data.get('listFraud', [])
         )
         

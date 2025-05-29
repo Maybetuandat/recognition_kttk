@@ -1,0 +1,42 @@
+
+{
+  "orig_img": "numpy.ndarray_representation_of_the_frame",
+  "orig_shape": [height, width], // Ví dụ: [720, 1280]
+  "names": { // Đây chính là yolo_model.names
+    "0": "person",
+    "1": "bicycle",
+    "2": "car",
+    "3": "motorcycle",
+    // ... và các tên lớp khác mà model được huấn luyện để nhận diện
+    "79": "normal", // Ví dụ, nếu "normal" là một lớp
+    "80": "fraud_type_A"
+  },
+  "boxes": { // Đây là results[0].boxes
+    // Các thuộc tính này thường là PyTorch Tensors hoặc NumPy arrays
+    // chứa dữ liệu cho TẤT CẢ các đối tượng được phát hiện (đã qua lọc confidence)
+    "xyxy": [ // Danh sách các bounding box, mỗi box là [x_min, y_min, x_max, y_max]
+      [100.5, 200.0, 150.5, 280.0], // Box cho đối tượng 1
+      [300.0, 400.0, 350.0, 480.0]  // Box cho đối tượng 2
+      // ... (nếu có nhiều đối tượng khác)
+    ],
+    "conf": [ // Danh sách các điểm tin cậy tương ứng
+      0.95,   // Độ tin cậy cho đối tượng 1
+      0.88    // Độ tin cậy cho đối tượng 2
+      // ...
+    ],
+    "cls": [ // Danh sách các ID lớp tương ứng
+      80,     // ID lớp cho đối tượng 1 (ví dụ: "fraud_type_A")
+      0       // ID lớp cho đối tượng 2 (ví dụ: "person")
+      // ...
+    ],
+    "data": [ // Thường là một tensor/array [N, 6] với N là số đối tượng
+              // Mỗi hàng: [x_min, y_min, x_max, y_max, confidence, class_id]
+      [100.5, 200.0, 150.5, 280.0, 0.95, 80],
+      [300.0, 400.0, 350.0, 480.0, 0.88, 0]
+      // ...
+    ]
+    // Có thể có các thuộc tính khác như 'id' nếu tracking được bật
+  }
+  // Có thể có các thuộc tính khác như 'masks' (cho segmentation) hoặc 'probs' (cho classification)
+  // tùy thuộc vào loại model và tác vụ.
+}

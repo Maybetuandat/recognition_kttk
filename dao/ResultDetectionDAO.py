@@ -1,12 +1,14 @@
 from dao.BaseDAO import BaseDAO
+from dao.ResultDetectionFraudDAO import ResultDetectionFraudDAO
 from models.ResultDetection import ResultDetection
+from models.ResultDetectionFraud import ResultDetectionFraud
 from models.FraudLabel import FraudLabel
-import json
 
 
 class ResultDetectionDAO(BaseDAO):
     def __init__(self):
         super().__init__()
+        self.result_detection_fraud_dao = ResultDetectionFraudDAO()
         self.create_table()
     
     def create_table(self):
@@ -21,9 +23,6 @@ class ResultDetectionDAO(BaseDAO):
             bbox_width FLOAT,
             bbox_height FLOAT,
             confidence FLOAT,
-            class_id INT,
-            class_name VARCHAR(255),
-            fraud_labels JSON,
             FOREIGN KEY (detection_id) REFERENCES detection(id) ON DELETE CASCADE
         )
         """
@@ -31,19 +30,10 @@ class ResultDetectionDAO(BaseDAO):
     
     def insert(self, result_detection):
         """Insert a new result detection record"""
-        # Convert fraud labels to JSON
-        fraud_labels_json = None
-        if result_detection.listFraud:
-            fraud_labels_json = json.dumps([
-                fraud.to_dict() if hasattr(fraud, 'to_dict') else fraud
-                for fraud in result_detection.listFraud
-            ])
-        
         query = """
         INSERT INTO result_detection 
-        (detection_id, image_url, bbox_x, bbox_y, bbox_width, bbox_height, 
-         confidence, class_id, class_name, fraud_labels)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        (detection_id, image_url, bbox_x, bbox_y, bbox_width, bbox_height, confidence)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         params = (
             result_detection.detection.id if result_detection.detection else None,
@@ -52,33 +42,31 @@ class ResultDetectionDAO(BaseDAO):
             result_detection.bboxY,
             result_detection.bboxWidth,
             result_detection.bboxHeight,
-            result_detection.confidence,
-            result_detection.classId,
-            result_detection.className,
-            fraud_labels_json
+            result_detection.confidence
         )
         
         result = self.execute_query(query, params)
         if result and isinstance(result, int):
             result_detection.id = result
+            
+            # Insert fraud label relationships
+            if result_detection.listFraud:
+                for fraud_label in result_detection.listFraud:
+                    result_detection_fraud = ResultDetectionFraud(
+                        resultDetectionId=result,
+                        fraudLabelId=fraud_label.id if hasattr(fraud_label, 'id') else fraud_label
+                    )
+                    self.result_detection_fraud_dao.insert(result_detection_fraud)
+            
             return result
         return None
     
     def update(self, result_detection):
         """Update an existing result detection record"""
-        # Convert fraud labels to JSON
-        fraud_labels_json = None
-        if result_detection.listFraud:
-            fraud_labels_json = json.dumps([
-                fraud.to_dict() if hasattr(fraud, 'to_dict') else fraud
-                for fraud in result_detection.listFraud
-            ])
-        
         query = """
         UPDATE result_detection
         SET detection_id = %s, image_url = %s, bbox_x = %s, bbox_y = %s, 
-            bbox_width = %s, bbox_height = %s, confidence = %s, 
-            class_id = %s, class_name = %s, fraud_labels = %s
+            bbox_width = %s, bbox_height = %s, confidence = %s
         WHERE id = %s
         """
         params = (
@@ -89,15 +77,31 @@ class ResultDetectionDAO(BaseDAO):
             result_detection.bboxWidth,
             result_detection.bboxHeight,
             result_detection.confidence,
-            result_detection.classId,
-            result_detection.className,
-            fraud_labels_json,
             result_detection.id
         )
-        return self.execute_query(query, params)
+        
+        # Update main record
+        success = self.execute_query(query, params)
+        
+        if success:
+            # Update fraud label relationships
+            # First delete all existing relationships
+            self.result_detection_fraud_dao.delete_by_result_detection_id(result_detection.id)
+            
+            # Then insert new relationships
+            if result_detection.listFraud:
+                for fraud_label in result_detection.listFraud:
+                    result_detection_fraud = ResultDetectionFraud(
+                        resultDetectionId=result_detection.id,
+                        fraudLabelId=fraud_label.id if hasattr(fraud_label, 'id') else fraud_label
+                    )
+                    self.result_detection_fraud_dao.insert(result_detection_fraud)
+        
+        return success
     
     def delete(self, id):
         """Delete a result detection record by id"""
+        # Relationships will be auto-deleted due to CASCADE
         query = "DELETE FROM result_detection WHERE id = %s"
         return self.execute_query(query, (id,))
     
@@ -112,7 +116,10 @@ class ResultDetectionDAO(BaseDAO):
         result = self.fetch_one(query, (id,))
         
         if result:
-            return self._map_to_result_detection(result)
+            result_detection = self._map_to_result_detection(result)
+            # Load fraud labels through relationship table
+            result_detection.listFraud = self._load_fraud_labels(result_detection.id)
+            return result_detection
         return None
     
     def find_all(self):
@@ -120,28 +127,42 @@ class ResultDetectionDAO(BaseDAO):
         query = "SELECT * FROM result_detection"
         results = self.fetch_all(query)
         
-        return [self._map_to_result_detection(row) for row in results]
+        result_detections = []
+        for row in results:
+            result_detection = self._map_to_result_detection(row)
+            # Load fraud labels through relationship table
+            result_detection.listFraud = self._load_fraud_labels(result_detection.id)
+            result_detections.append(result_detection)
+        
+        return result_detections
     
     def find_by_detection_id(self, detection_id):
         """Find all result detections for a specific detection"""
         query = "SELECT * FROM result_detection WHERE detection_id = %s"
         results = self.fetch_all(query, (detection_id,))
         
-        return [self._map_to_result_detection(row) for row in results]
-    
-    def find_by_class_name(self, class_name):
-        """Find result detections by class name"""
-        query = "SELECT * FROM result_detection WHERE class_name = %s"
-        results = self.fetch_all(query, (class_name,))
+        result_detections = []
+        for row in results:
+            result_detection = self._map_to_result_detection(row)
+            # Load fraud labels through relationship table
+            result_detection.listFraud = self._load_fraud_labels(result_detection.id)
+            result_detections.append(result_detection)
         
-        return [self._map_to_result_detection(row) for row in results]
+        return result_detections
     
     def find_by_confidence_threshold(self, min_confidence):
         """Find result detections with confidence above threshold"""
         query = "SELECT * FROM result_detection WHERE confidence >= %s"
         results = self.fetch_all(query, (min_confidence,))
         
-        return [self._map_to_result_detection(row) for row in results]
+        result_detections = []
+        for row in results:
+            result_detection = self._map_to_result_detection(row)
+            # Load fraud labels through relationship table
+            result_detection.listFraud = self._load_fraud_labels(result_detection.id)
+            result_detections.append(result_detection)
+        
+        return result_detections
     
     def _map_to_result_detection(self, row):
         """Map database row to ResultDetection object"""
@@ -153,22 +174,29 @@ class ResultDetectionDAO(BaseDAO):
         result_detection.bboxWidth = row.get('bbox_width')
         result_detection.bboxHeight = row.get('bbox_height')
         result_detection.confidence = row.get('confidence')
-        result_detection.classId = row.get('class_id')
-        result_detection.className = row.get('class_name')
-        
-        # Parse fraud labels from JSON
-        fraud_labels_json = row.get('fraud_labels')
-        if fraud_labels_json:
-            try:
-                fraud_labels_data = json.loads(fraud_labels_json)
-                result_detection.listFraud = [
-                    FraudLabel.from_dict(fraud) if isinstance(fraud, dict) else fraud
-                    for fraud in fraud_labels_data
-                ]
-            except json.JSONDecodeError:
-                result_detection.listFraud = []
         
         # Note: detection object will be set by DetectionDAO when loading
         # to avoid circular dependency
         
         return result_detection
+    
+    def _load_fraud_labels(self, result_detection_id):
+        """Load fraud labels for a result detection through relationship table"""
+        query = """
+        SELECT fl.* FROM fraud_label fl
+        INNER JOIN result_detection_fraud rdf ON fl.id = rdf.fraud_label_id
+        WHERE rdf.result_detection_id = %s
+        """
+        results = self.fetch_all(query, (result_detection_id,))
+        
+        fraud_labels = []
+        for row in results:
+            fraud_label = FraudLabel()
+            fraud_label.id = row.get('id')
+            fraud_label.name = row.get('name')
+            fraud_label.classId = row.get('class_id')
+            fraud_label.color = row.get('color')
+            fraud_label.createAt = row.get('create_at')
+            fraud_labels.append(fraud_label)
+        
+        return fraud_labels
