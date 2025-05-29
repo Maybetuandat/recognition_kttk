@@ -46,7 +46,7 @@ class FrameDetectionService(BaseService):
             existing.listBoundingBoxDetection = []
             for bbox_data in data['listBoundingBoxDetection']:
                 bbox = BoundingBoxDetection.from_dict(bbox_data)
-                bbox.resultDetection = existing
+                bbox.frameDetection = existing
                 self.bbox_dao.insert(bbox)
                 existing.listBoundingBoxDetection.append(bbox)
 
@@ -58,7 +58,7 @@ class FrameDetectionService(BaseService):
     def delete(self, id):
         existing = self.dao.find_by_id(id)
         if not existing:
-            raise ValueError(f"ResultDetection with ID {id} not found")
+            raise ValueError(f"FrameDetection with ID {id} not found")
         
         if self.dao.delete(id):
             return True

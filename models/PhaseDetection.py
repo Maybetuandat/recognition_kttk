@@ -40,7 +40,7 @@ class PhaseDetection:
     def from_dict(cls, data):
         
         from .Model import Model
-        from .FrameDetection import ResultDetection  
+        from .FrameDetection import FrameDetection  
         
         detection = cls()
         detection.id = data.get('id')  
@@ -66,7 +66,7 @@ class PhaseDetection:
         result = data.get('result')
         if result:
             detection.result = [
-                ResultDetection.from_dict(res) if isinstance(
+                FrameDetection.from_dict(res) if isinstance(
                     res, dict) else res
                 for res in result
             ]

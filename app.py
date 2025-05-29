@@ -24,7 +24,22 @@ model_controller = ModelController()
 video_detection_controller.register_routes(app)
 model_controller.register_routes(app)
 
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Đảm bảo thư mục uploads tồn tại
+os.makedirs(os.path.join(app.root_path, app.config['UPLOAD_FOLDER']), exist_ok=True)
+os.makedirs(os.path.join(app.root_path, app.config['UPLOAD_FOLDER'], 'flagged_frames'), exist_ok=True)
+
+# Route để phục vụ các file trong thư mục uploads
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(os.path.join(app.root_path, app.config['UPLOAD_FOLDER']), filename)
+
+# Route cụ thể cho thư mục flagged_frames
+@app.route('/uploads/flagged_frames/<path:filename>')
+def flagged_frame(filename):
+    return send_from_directory(os.path.join(app.root_path, app.config['UPLOAD_FOLDER'], 'flagged_frames'), filename)
 
 
 if __name__ == '__main__':

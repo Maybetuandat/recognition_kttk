@@ -21,19 +21,14 @@ class BoundingBoxDetection:
         }
 
         if self.fraudLabel:
-            result_dict['fraudLabel'] = self.fraudLabel.id if hasattr(self.fraudLabel, 'id') else self.fraudLabel
-
-        if self.frameDetection:
-            result_dict['frameDetection'] = (
-                self.frameDetection.id if hasattr(self.frameDetection, 'id') else self.frameDetection
-            )
+            result_dict['fraudLabel'] = self.fraudLabel.to_dict() if hasattr(self.fraudLabel, 'to_dict') else self.fraudLabel
 
         return result_dict
 
     @classmethod
     def from_dict(cls, data):
         from .FraudLabel import FraudLabel
-        from .FrameDetection import frameDetection
+        from .FrameDetection import FrameDetection
 
         bbox = cls()
         bbox.id = data.get('id')
@@ -53,7 +48,7 @@ class BoundingBoxDetection:
         frame_detection = data.get('frameDetection')
         if frame_detection:
             if isinstance(frame_detection, dict):
-                bbox.frameDetection = frameDetection.from_dict(frame_detection)
+                bbox.frameDetection = FrameDetection.from_dict(frame_detection)
             else:
                 bbox.frameDetection = frame_detection
 

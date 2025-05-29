@@ -3,8 +3,6 @@ from models.FraudLabel import FraudLabel
 
 
 class FraudLabelService:
-    
-    
     def __init__(self):
         self.base_url = "http://localhost:8888/api/fraud-label"
     
@@ -36,6 +34,7 @@ class FraudLabelService:
             
             data = response.json()
             print(f"fetch fraud label by classId {class_id}: ", data)
+            # Đảm bảo trả về đối tượng FraudLabel đầy đủ
             return FraudLabel.from_dict(data)
             
         except Exception as e:

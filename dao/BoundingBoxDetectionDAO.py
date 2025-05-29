@@ -6,9 +6,16 @@ from models.FrameDetection import FrameDetection
 class BoundingBoxDetectionDAO(BaseDAO):
     def __init__(self):
         super().__init__()
-        self.create_table()
-
+        # Table will be created when needed, not in constructor
+        # to prevent circular dependencies
+    
     def create_table(self):
+        # Ensure frame_detection table exists first
+        from dao.FrameDetectionDAO import FrameDetectionDAO
+        frame_detection_dao = FrameDetectionDAO()
+        frame_detection_dao.create_table()
+        
+        # Now create bounding_box_detection table
         query = """
         CREATE TABLE IF NOT EXISTS bounding_box_detection (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -25,6 +32,9 @@ class BoundingBoxDetectionDAO(BaseDAO):
         self.execute_query(query)
 
     def insert(self, bbox):
+        # Ensure table exists before insert
+        self.create_table()
+        
         query = """
         INSERT INTO bounding_box_detection 
         (fraud_label_id, frame_detection_id, x_center, y_center, width, height, confidence)

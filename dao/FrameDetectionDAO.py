@@ -1,30 +1,34 @@
 from dao.BaseDAO import BaseDAO
-
-from dao.BoundingBoxDetectionDAO import BoundingBoxDetectionDAO
 from models.FrameDetection import FrameDetection
-
-from models.FraudLabel import FraudLabel
+from models.PhaseDetection import PhaseDetection
 
 
 class FrameDetectionDAO(BaseDAO):
     def __init__(self):
         super().__init__()
-        self.bounding_box_dao = BoundingBoxDetectionDAO()
-        self.create_table()
+        # Table will be created when needed, not in constructor
+        # to prevent circular dependencies
     
     def create_table(self):
+        # Ensure phase_detection table exists first
+        from dao.PhaseDetectionDAO import PhaseDetectionDAO
+        phase_detection_dao = PhaseDetectionDAO()
+        phase_detection_dao.create_table()
         
+        # Now create frame_detection table
         query = """
         CREATE TABLE IF NOT EXISTS frame_detection (
             id INT AUTO_INCREMENT PRIMARY KEY,
             detection_id INT,
             image_url VARCHAR(500),
-            FOREIGN KEY (detection_id) REFERENCES detection(id) ON DELETE CASCADE
+            FOREIGN KEY (detection_id) REFERENCES phase_detection(id) ON DELETE CASCADE
         )
         """
         self.execute_query(query)
     
     def insert(self, frame_detection):
+        # Ensure table exists before insert
+        self.create_table()
         
         query = """
         INSERT INTO frame_detection 
@@ -36,112 +40,130 @@ class FrameDetectionDAO(BaseDAO):
             frame_detection.imageUrl
         )
         
-        return self.execute_query(query, params)
+        result = self.execute_query(query, params)
+        if result and isinstance(result, int):
+            frame_detection.id = result
+            
+            # Insert associated bounding boxes
+            if frame_detection.listBoundingBoxDetection:
+                from dao.BoundingBoxDetectionDAO import BoundingBoxDetectionDAO
+                bbox_dao = BoundingBoxDetectionDAO()
+                for bbox in frame_detection.listBoundingBoxDetection:
+                    bbox.frameDetection = frame_detection
+                    bbox_dao.insert(bbox)
+            
+            return result
+        return None
+    
     def update(self, frame_detection):
-        """Update an existing result detection record"""
+        """Update an existing frame detection record"""
+        # Ensure table exists before update
+        self.create_table()
+        
         query = """
         UPDATE frame_detection
-        SET detection_id = %s, image_url = %s, bbox_x = %s, bbox_y = %s, 
-            bbox_width = %s, bbox_height = %s, confidence = %s
+        SET detection_id = %s, image_url = %s
         WHERE id = %s
         """
         params = (
             frame_detection.detection.id if frame_detection.detection else None,
             frame_detection.imageUrl,
-            frame_detection.bboxX,
-            frame_detection.bboxY,
-            frame_detection.bboxWidth,
-            frame_detection.bboxHeight,
-            frame_detection.confidence,
             frame_detection.id
         )
         
         # Update main record
         success = self.execute_query(query, params)
         
-       
+        # Update bounding boxes
+        if success and frame_detection.listBoundingBoxDetection:
+            from dao.BoundingBoxDetectionDAO import BoundingBoxDetectionDAO
+            bbox_dao = BoundingBoxDetectionDAO()
+            # Delete existing bounding boxes
+            bbox_dao.delete_by_frame_detection_id(frame_detection.id)
+            
+            # Insert new bounding boxes
+            for bbox in frame_detection.listBoundingBoxDetection:
+                bbox.frameDetection = frame_detection
+                bbox_dao.insert(bbox)
         
         return success
     
     def delete(self, id):
-        """Delete a result detection record by id"""
+        """Delete a frame detection record by id"""
         # Relationships will be auto-deleted due to CASCADE
         query = "DELETE FROM frame_detection WHERE id = %s"
         return self.execute_query(query, (id,))
     
     def delete_by_detection_id(self, detection_id):
-        """Delete all result detections for a specific detection"""
+        """Delete all frame detections for a specific detection"""
         query = "DELETE FROM frame_detection WHERE detection_id = %s"
         return self.execute_query(query, (detection_id,))
     
     def find_by_id(self, id):
-        """Find a result detection record by id"""
+        """Find a frame detection record by id"""
+        # Ensure table exists before query
+        self.create_table()
+        
         query = "SELECT * FROM frame_detection WHERE id = %s"
         result = self.fetch_one(query, (id,))
         
         if result:
             frame_detection = self._map_to_frame_detection(result)
-            # Load fraud labels through relationship table
-            frame_detection.listFraud = self._load_fraud_labels(frame_detection.id)
+            # Load bounding boxes
+            from dao.BoundingBoxDetectionDAO import BoundingBoxDetectionDAO
+            bbox_dao = BoundingBoxDetectionDAO()
+            frame_detection.listBoundingBoxDetection = bbox_dao.find_by_frame_detection_id(frame_detection.id)
             return frame_detection
         return None
     
     def find_all(self):
-        """Find all result detection records"""
+        """Find all frame detection records"""
+        # Ensure table exists before query
+        self.create_table()
+        
         query = "SELECT * FROM frame_detection"
         results = self.fetch_all(query)
         
         frame_detections = []
         for row in results:
             frame_detection = self._map_to_frame_detection(row)
-            # Load fraud labels through relationship table
-            frame_detection.listFraud = self._load_fraud_labels(frame_detection.id)
+            # Load bounding boxes
+            from dao.BoundingBoxDetectionDAO import BoundingBoxDetectionDAO
+            bbox_dao = BoundingBoxDetectionDAO()
+            frame_detection.listBoundingBoxDetection = bbox_dao.find_by_frame_detection_id(frame_detection.id)
             frame_detections.append(frame_detection)
         
         return frame_detections
     
     def find_by_detection_id(self, detection_id):
-        """Find all result detections for a specific detection"""
+        """Find all frame detections for a specific detection"""
+        # Ensure table exists before query
+        self.create_table()
+        
         query = "SELECT * FROM frame_detection WHERE detection_id = %s"
         results = self.fetch_all(query, (detection_id,))
         
         frame_detections = []
         for row in results:
             frame_detection = self._map_to_frame_detection(row)
-            # Load fraud labels through relationship table
-            frame_detection.listFraud = self._load_fraud_labels(frame_detection.id)
-            frame_detections.append(frame_detection)
-        
-        return frame_detections
-    
-    def find_by_confidence_threshold(self, min_confidence):
-        """Find result detections with confidence above threshold"""
-        query = "SELECT * FROM frame_detection WHERE confidence >= %s"
-        results = self.fetch_all(query, (min_confidence,))
-        
-        frame_detections = []
-        for row in results:
-            frame_detection = self._map_to_frame_detection(row)
-            # Load fraud labels through relationship table
-            frame_detection.listFraud = self._load_fraud_labels(frame_detection.id)
+            # Load bounding boxes
+            from dao.BoundingBoxDetectionDAO import BoundingBoxDetectionDAO
+            bbox_dao = BoundingBoxDetectionDAO()
+            frame_detection.listBoundingBoxDetection = bbox_dao.find_by_frame_detection_id(frame_detection.id)
             frame_detections.append(frame_detection)
         
         return frame_detections
     
     def _map_to_frame_detection(self, row):
-        """Map database row to ResultDetection object"""
+        """Map database row to FrameDetection object"""
         frame_detection = FrameDetection()
         frame_detection.id = row.get('id')
         frame_detection.imageUrl = row.get('image_url')
-        frame_detection.bboxX = row.get('bbox_x')
-        frame_detection.bboxY = row.get('bbox_y')
-        frame_detection.bboxWidth = row.get('bbox_width')
-        frame_detection.bboxHeight = row.get('bbox_height')
-        frame_detection.confidence = row.get('confidence')
         
-        # Note: detection object will be set by DetectionDAO when loading
+        # Note: detection object will be set by PhaseDetectionDAO when loading
         # to avoid circular dependency
+        detection_id = row.get('detection_id')
+        if detection_id:
+            frame_detection.detection = PhaseDetection(id=detection_id)
         
         return frame_detection
-    
-   

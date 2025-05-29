@@ -22,7 +22,7 @@ class BoundingBoxDetectionService(BaseService):
         if not existing:
             raise ValueError(f"BoundingBoxDetection with ID {id} not found")
         
-        for field in ['fraudLabel', 'resultDetection', 'xCenter', 'yCenter', 'width', 'height', 'confidence']:
+        for field in ['fraudLabel', 'frameDetection', 'xCenter', 'yCenter', 'width', 'height', 'confidence']:
             if field in data:
                 setattr(existing, field, data[field])
         
@@ -49,5 +49,5 @@ class BoundingBoxDetectionService(BaseService):
         return self.dao.find_all()
     
     def get_by_result_detection_id(self, result_detection_id):
-        """Custom method to retrieve bounding boxes by resultDetection ID"""
+        
         return self.dao.find_by_result_detection_id(result_detection_id)

@@ -35,9 +35,9 @@ class FrameDetection:
         
         detection_data = data.get('detection')
         if detection_data:
-            from .PhaseDetection import Detection
+            from .PhaseDetection import PhaseDetection
             if isinstance(detection_data, dict):
-                result.detection = Detection.from_dict(detection_data)
+                result.detection = PhaseDetection.from_dict(detection_data)
             else:
                 result.detection = detection_data
                 
