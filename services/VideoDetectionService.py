@@ -2,10 +2,12 @@ import cv2
 import numpy as np
 from datetime import datetime
 import os
-from services.DetectionService import DetectionService
+from services.FrameDetectionService import FrameDetectionService
+from services.PhaseDetectionService import PhaseDetectionService
 from services.FileStorageService import FileStorageService
 from services.FraudLabelService import FraudLabelService
 from services.ModelService import ModelService
+from services.BoundingBoxDetectionService import BoundingBoxDetectionService
 
 
 class VideoDetectionService:
@@ -13,10 +15,12 @@ class VideoDetectionService:
     
     def __init__(self):
         self.model_service = ModelService()
-        self.detection_service = DetectionService()
+        self.phase_detection_service = PhaseDetectionService()
         self.file_storage_service = FileStorageService()
         self.fraud_label_service = FraudLabelService()
-        self.detection = None
+        self.frame_detection_service = FrameDetectionService()
+        self.phase_detection = None
+        self.bounding_box_detection_service = BoundingBoxDetectionService()
     
     def process_video(self, detection, video_path):
         model_data = self.model_service.load_model(detection.model.id)
@@ -29,7 +33,7 @@ class VideoDetectionService:
         if not cap.isOpened():
             raise ValueError(f"Cannot open video: {video_path}")
         # Create detection record
-        self.detection = self.detection_service.create(detection)
+        self.phase_detection = self.phase_detection_service.create(detection)
         # Process video frames
         self._process_frames(
             cap, yolo_model
@@ -37,7 +41,7 @@ class VideoDetectionService:
         cap.release()
         cv2.destroyAllWindows()
         # Prepare response data
-        return self.detection
+        return self.phase_detection
     def _process_frames(self, cap, yolo_model):
         frame_count = 0
         previous_detections = []
@@ -53,13 +57,13 @@ class VideoDetectionService:
             frame_count += 1
             
             # Skip frames
-            if frame_count % self.detection.frame_skip != 0:
+            if frame_count % self.phase_detection.frame_skip != 0:
                 continue
             
             # Run detection
             
-            results = yolo_model(frame, conf=self.detection.confidence_threshold)
-            self._export_results_to_json(results, frame_count)
+            results = yolo_model(frame, conf=self.phase_detection.confidence_threshold)
+            # self._export_results_to_json(results, frame_count)
             # Extract detections
             #         'class_id': int(box.cls[0]),
             #         'class_name': yolo_model.names[int(box.cls[0])],
@@ -68,18 +72,20 @@ class VideoDetectionService:
             
             current_detections = self._extract_detections(results, yolo_model)
             
+
+            # print(f"detection ", current_detections)
             #thuc hien kiem tra voi previouse detections -> neu giong nhau thi bo qua
-            if self._are_detections_similar(previous_detections, current_detections, self.detection.similarity_threshold):
+            if self._are_detections_similar(previous_detections, current_detections, self.phase_detection.similarity_threshold):
                 continue
             
             # loai bo cac doi tuong khong phat hien gian lan 
-            frame_results = self._filter_abnormal_detections(current_detections)
+            listBoundingBox = self._filter_abnormal_detections(current_detections)
             
-            if not frame_results:
+            if not listBoundingBox:
                 continue
             
             # Save frame and detections
-            self._save_frame_detections(frame, frame_results, frame_count, cap.get(cv2.CAP_PROP_FPS))    
+            self._save_frame_detections(frame, listBoundingBox, frame_count)
             previous_detections = current_detections
     def _extract_detections(self, results, yolo_model):
         detections = []
@@ -104,44 +110,52 @@ class VideoDetectionService:
             if det['class_name'].lower() == "normal":
                 continue
             
-            fraud_labels = []
+            fraud_labels = None
             try:
-                fraud_labels.append(self.fraud_label_service.get_by_class_id(det['class_id']))
+                  fraud_labels = self.fraud_label_service.get_by_class_id(det['class_id'])
             except:
                 pass
             
             result = {
                 'confidence': det['confidence'],
-                'listFraud': fraud_labels
+                'fraudLabel': fraud_labels
             }
             
             if det['bbox']:
                 x1, y1, x2, y2 = det['bbox']
                 result.update({
-                    'bboxX': x1,
-                    'bboxY': y1,
-                    'bboxWidth': x2 - x1,
-                    'bboxHeight': y2 - y1
+                    'xCenter': x1,
+                    'yCenter': y1,
+                    'width': x2 - x1,
+                    'height': y2 - y1
                 })
             
             results.append(result)
         return results
 
-    def _save_frame_detections(self, frame, results, frame_number, fps):
+    def _save_frame_detections(self, frame, listBoundingBox, frame_number):
         _, image_url = self.file_storage_service.save_flagged_frame(frame, frame_number)
         
-        for result in results:
-            result['imageUrl'] = image_url
-            try:
-                newResult = self.detection_service.add_result(self.detection, result)
-                self.detection.result.append(newResult)
-            except Exception as e:
-                print(f"Error: {e}")
+        phaseDetection = None
+        phaseDetection.imageUrl = image_url
+        phaseDetection.detection = self.phase_detection
+        phaseDetection.listBoundingBoxDetection = listBoundingBox
+        newFrameDetection = self.frame_detection_service.create(phaseDetection)
+
+
+        
+
+        for bbox in listBoundingBox:
+            bbox['frameDetection'] = newFrameDetection
+            self.bounding_box_detection_service.create(bbox)
+            newFrameDetection.listBoundingBoxDetection.append(bbox)
+        
+        self.phase_detection.result.append(newFrameDetection)
 
     def _are_detections_similar(self, prev, curr, threshold):
         if len(prev) != len(curr) or not prev:
             return len(prev) == len(curr) == 0
-        
+
         prev_sorted = sorted(prev, key=lambda x: (x['class_id'], -x['confidence']))
         curr_sorted = sorted(curr, key=lambda x: (x['class_id'], -x['confidence']))
         
@@ -169,4 +183,4 @@ class VideoDetectionService:
         
         return intersection / union if union > 0 else 0.0   #IoU = Diện tích giao nhau / Diện tích hợp.
 
-  
+   

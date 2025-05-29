@@ -115,7 +115,7 @@ class ModelService(BaseService):
         existing = self.dao.find_by_id(id)
         if not existing:
             raise ValueError(f"Model with ID {id} not found")
-        from dao.DetectionDAO import DetectionDAO
+        from dao.PhaseDetectionDAO import DetectionDAO
         detection_dao = DetectionDAO()
         detections = detection_dao.find_by_model_id(id)
         if detections:

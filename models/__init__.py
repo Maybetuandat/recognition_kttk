@@ -1,14 +1,14 @@
 from .Model import Model
-from .Detection import Detection
+from .PhaseDetection import PhaseDetection
 from .TrainInfo import TrainInfo
-from .ResultDetection import ResultDetection
+from .FrameDetection import FrameDetection
 from .FraudLabel import FraudLabel
 from .BoundingBoxDetection import BoundingBoxDetection
 __all__ = [
     'Model',
-    'Detection',
+    'PhaseDetection',
     'TrainInfo',
-    'ResultDetection',
+    'FrameDetection',
     'FraudLabel',
     'BoundingBoxDetection'
 ]

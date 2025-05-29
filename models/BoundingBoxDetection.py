@@ -1,9 +1,9 @@
 class BoundingBoxDetection:
-    def __init__(self, id=None, fraudLabel=None, resultDetection=None,
+    def __init__(self, id=None, fraudLabel=None, frameDetection=None,
                  xCenter=None, yCenter=None, width=None, height=None, confidence=None):
         self.id = id
         self.fraudLabel = fraudLabel
-        self.resultDetection = resultDetection
+        self.frameDetection = frameDetection
         self.xCenter = xCenter
         self.yCenter = yCenter
         self.width = width
@@ -23,9 +23,9 @@ class BoundingBoxDetection:
         if self.fraudLabel:
             result_dict['fraudLabel'] = self.fraudLabel.id if hasattr(self.fraudLabel, 'id') else self.fraudLabel
 
-        if self.resultDetection:
-            result_dict['resultDetection'] = (
-                self.resultDetection.id if hasattr(self.resultDetection, 'id') else self.resultDetection
+        if self.frameDetection:
+            result_dict['frameDetection'] = (
+                self.frameDetection.id if hasattr(self.frameDetection, 'id') else self.frameDetection
             )
 
         return result_dict
@@ -33,7 +33,7 @@ class BoundingBoxDetection:
     @classmethod
     def from_dict(cls, data):
         from .FraudLabel import FraudLabel
-        from .ResultDetection import ResultDetection
+        from .FrameDetection import frameDetection
 
         bbox = cls()
         bbox.id = data.get('id')
@@ -50,11 +50,11 @@ class BoundingBoxDetection:
             else:
                 bbox.fraudLabel = fraud_label_data
 
-        result_detection_data = data.get('resultDetection')
-        if result_detection_data:
-            if isinstance(result_detection_data, dict):
-                bbox.resultDetection = ResultDetection.from_dict(result_detection_data)
+        frame_detection = data.get('frameDetection')
+        if frame_detection:
+            if isinstance(frame_detection, dict):
+                bbox.frameDetection = frameDetection.from_dict(frame_detection)
             else:
-                bbox.resultDetection = result_detection_data
+                bbox.frameDetection = frame_detection
 
         return bbox

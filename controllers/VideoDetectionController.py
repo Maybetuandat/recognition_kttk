@@ -1,10 +1,10 @@
 import json
 from flask import request, jsonify
-from models.Detection import Detection
+from models.PhaseDetection import PhaseDetection
 from datetime import datetime
 
 from services import VideoDetectionService
-from services.DetectionService import DetectionService
+from services.PhaseDetectionService import PhaseDetectionService
 from services.FileStorageService import FileStorageService
 from services.ModelService import ModelService
 
@@ -13,7 +13,7 @@ class VideoDetectionController:
         self.model_service = ModelService()
         self.video_detection_service = VideoDetectionService()
         self.file_storage_service = FileStorageService()
-        self.detection_service = DetectionService()
+        self.detection_service = PhaseDetectionService()
         
     def detect_video(self):
         try:
@@ -28,7 +28,7 @@ class VideoDetectionController:
             
             print(f"Received detection data: {detection_data}")  # Debugging line
             # Tạo đối tượng Detection từ dict
-            detection = Detection.from_dict(detection_data)
+            detection = PhaseDetection.from_dict(detection_data)
             
             
             if not detection.model or not hasattr(detection.model, 'id'):
