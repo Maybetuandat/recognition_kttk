@@ -50,7 +50,7 @@ class PhaseDetectionDAO(BaseDAO):
         result = self.execute_query(query, params)
         if result and isinstance(result, int):
             phase_detection.id = result
-            return result
+            return phase_detection
         return None
     
     def update(self, phase_detection):
@@ -118,45 +118,8 @@ class PhaseDetectionDAO(BaseDAO):
         
         return phase_detections
     
-    def find_by_model_id(self, model_id):
-        """Find phase_detections by model id"""
-        query = "SELECT * FROM phase_detection WHERE model_id = %s ORDER BY time_detect DESC"
-        results = self.fetch_all(query, (model_id,))
-        
-        phase_detections = []
-        for row in results:
-            phase_detection = self._map_to_phase_detection(row)
-            
-            # Load associated result phase_detections
-            from dao.FrameDetectionDAO import FrameDetectionDAO
-            frame_dao = FrameDetectionDAO()
-            phase_detection.result = frame_dao.find_by_detection_id(phase_detection.id)
-            
-            phase_detections.append(phase_detection)
-        
-        return phase_detections
-    
-    def find_by_date_range(self, start_date, end_date):
-        """Find phase_detections within a date range"""
-        query = """
-        SELECT * FROM phase_detection 
-        WHERE time_detect BETWEEN %s AND %s 
-        ORDER BY time_detect DESC
-        """
-        results = self.fetch_all(query, (start_date, end_date))
-        
-        phase_detections = []
-        for row in results:
-            phase_detection = self._map_to_phase_detection(row)
-            
-            # Load associated result phase_detections
-            from dao.FrameDetectionDAO import FrameDetectionDAO
-            frame_dao = FrameDetectionDAO()
-            phase_detection.result = frame_dao.find_by_detection_id(phase_detection.id)
-            
-            phase_detections.append(phase_detection)
-        
-        return phase_detections
+   
+   
     
     def _map_to_phase_detection(self, row):
         """Map database row to phase_detection object"""

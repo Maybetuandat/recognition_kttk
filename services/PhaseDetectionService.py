@@ -14,32 +14,31 @@ class PhaseDetectionService(BaseService):
         super().__init__()
         self.dao = PhaseDetectionDAO()
         self.model_service = ModelService()
-        self.result_dao = FrameDetectionDAO()
+        
     
     def create(self, detection):
-        detection_id = self.dao.insert(detection)
-        if detection_id:
-            detection.id = detection_id
+        detection = self.dao.insert(detection)
+        if detection:
             return detection
         raise Exception("Failed to create detection")
     
-    def update(self, id, data):
+    def update(self, detection):
        
-        existing = self.dao.find_by_id(id)
+        existing = self.dao.find_by_id(detection.id)
         if not existing:
-            raise ValueError(f"Detection with ID {id} not found")
-        
+            raise ValueError(f"Detection with ID {detection.id} not found")
+
         # Update fields
-        if 'modelId' in data:
-            model = self.model_service.get_by_id(data['modelId'])
+        if 'modelId' in detection:
+            model = self.model_service.get_by_id(detection['modelId'])
             existing.model = model
-        
-        if 'description' in data:
-            existing.description = data['description']
-        
-        if 'timeDetect' in data:
-            existing.timeDetect = datetime.strptime(data['timeDetect'], '%Y-%m-%d %H:%M:%S')
-        
+
+        if 'description' in detection:
+            existing.description = detection['description']
+
+        if 'timeDetect' in detection:
+            existing.timeDetect = datetime.strptime(detection['timeDetect'], '%Y-%m-%d %H:%M:%S')
+
         # Update in database
         if self.dao.update(existing):
             return existing

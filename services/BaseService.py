@@ -8,12 +8,12 @@ class BaseService(ABC):
         self.dao = None
     
     @abstractmethod
-    def create(self, data):
+    def create(self, obj):
         """Create a new record"""
         pass
     
     @abstractmethod
-    def update(self, id, data):
+    def update(self, obj):
         """Update an existing record"""
         pass
     

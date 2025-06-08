@@ -1,7 +1,6 @@
 # services/__init__.py
 
 from .BaseService import BaseService
-from .TrainInfoService import TrainInfoService
 from .ModelService import ModelService
 
 from .FraudLabelService import FraudLabelService
@@ -12,7 +11,6 @@ from .FrameDetectionService import FrameDetectionService
 from .PhaseDetectionService import PhaseDetectionService
 __all__ = [
     'BaseService',
-    'TrainInfoService',
     'ModelService',
     'PhaseDetectionService',
     'FraudLabelService',

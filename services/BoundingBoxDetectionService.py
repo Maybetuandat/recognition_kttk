@@ -10,22 +10,21 @@ class BoundingBoxDetectionService(BaseService):
         self.dao = BoundingBoxDetectionDAO()
 
     def create(self, bounding_box_detection):
-        bbox_id = self.dao.insert(bounding_box_detection)
+        bbox = self.dao.insert(bounding_box_detection)
 
-        if bbox_id:
-            bounding_box_detection.id = bbox_id
-            return bounding_box_detection
+        if bbox:
+            return bbox
         raise Exception("Failed to create bounding box detection")
     
-    def update(self, id, data):
-        existing = self.dao.find_by_id(id)
+    def update(self, boundingbox):
+        existing = self.dao.find_by_id(boundingbox.id)
         if not existing:
-            raise ValueError(f"BoundingBoxDetection with ID {id} not found")
-        
+            raise ValueError(f"BoundingBoxDetection with ID {boundingbox.id} not found")
+
         for field in ['fraudLabel', 'frameDetection', 'xCenter', 'yCenter', 'width', 'height', 'confidence']:
-            if field in data:
-                setattr(existing, field, data[field])
-        
+            if field in boundingbox:
+                setattr(existing, field, boundingbox[field])
+
         if self.dao.update(existing):
             return existing
         raise Exception("Failed to update bounding box detection")
@@ -48,6 +47,4 @@ class BoundingBoxDetectionService(BaseService):
     def get_all(self):
         return self.dao.find_all()
     
-    def get_by_result_detection_id(self, result_detection_id):
-        
-        return self.dao.find_by_result_detection_id(result_detection_id)
+   

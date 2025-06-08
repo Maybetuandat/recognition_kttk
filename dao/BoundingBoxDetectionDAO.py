@@ -52,7 +52,7 @@ class BoundingBoxDetectionDAO(BaseDAO):
         result = self.execute_query(query, params)
         if result and isinstance(result, int):
             bbox.id = result
-            return result
+            return bbox
         return None
 
     def update(self, bbox):

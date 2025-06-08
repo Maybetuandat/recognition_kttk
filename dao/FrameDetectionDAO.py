@@ -40,19 +40,13 @@ class FrameDetectionDAO(BaseDAO):
             frame_detection.imageUrl
         )
         
-        result = self.execute_query(query, params)
-        if result and isinstance(result, int):
-            frame_detection.id = result
+        id = self.execute_query(query, params)
+        if id and isinstance(id, int):
+            frame_detection.id = id
             
-            # Insert associated bounding boxes
-            if frame_detection.listBoundingBoxDetection:
-                from dao.BoundingBoxDetectionDAO import BoundingBoxDetectionDAO
-                bbox_dao = BoundingBoxDetectionDAO()
-                for bbox in frame_detection.listBoundingBoxDetection:
-                    bbox.frameDetection = frame_detection
-                    bbox_dao.insert(bbox)
             
-            return result
+            
+            return frame_detection
         return None
     
     def update(self, frame_detection):

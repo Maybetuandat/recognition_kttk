@@ -23,171 +23,153 @@ class VideoDetectionService:
         self.bounding_box_detection_service = BoundingBoxDetectionService()
         self.phase_detection = None
     
-    def process_video(self, detection, video_path):
+    def process_video(self, detection):
         model_data = self.model_service.load_model(detection.model.id)
         yolo_model = model_data['model']
         model_info = model_data['info']
-        
-        # Open the video file
-        cap = cv2.VideoCapture(video_path)
+
+        cap = cv2.VideoCapture(detection.videoUrl)
+
         if not cap.isOpened():
-            raise ValueError(f"Cannot open video: {video_path}")
-        
-        # Create detection record in database
+            raise ValueError(f"Cannot open video: {detection.videoUrl}")
         self.phase_detection = self.phase_detection_service.create(detection)
-        
-        # Process video frames
         self._process_frames(cap, yolo_model)
         
-        # Clean up
+     
         cap.release()
         cv2.destroyAllWindows()
         
-        # Return the detection with results
+      
         return self.phase_detection
     
     def _process_frames(self, cap, yolo_model):
         frame_count = 0
-        previous_detections = []
+        previous_bounding_boxes = []
         
         while True:
-            # Read the next frame
+          
             ret, frame = cap.read()
             if not ret:
-                break  # End of video
+                break 
             
             frame_count += 1
             
-            # Skip frames according to frame_skip parameter
+            
             if frame_count % self.phase_detection.frame_skip != 0:
                 continue
             
-            # Run detection on the frame
+           #thuc hien lay result frame detect yolo model 
             results = yolo_model(frame, conf=self.phase_detection.confidence_threshold)
             
-            # Extract detection results
-            current_detections = self._extract_detections(results, yolo_model)
-            
-            # Skip if similar to previous frame's detections
-            if self._are_detections_similar(previous_detections, current_detections, 
-                                           self.phase_detection.similarity_threshold):
+          
+          # thuc hien kiem tra va lay ra cac bouding box 
+            bounding_boxes, is_similar = self._process_detection_results(
+                results, 
+                yolo_model, 
+                previous_bounding_boxes, 
+                self.phase_detection.similarity_threshold
+            )
+            if is_similar or not bounding_boxes:
                 continue
-            
-            # Filter out normal (non-fraud) detections
-            bounding_boxes = self._filter_abnormal_detections(current_detections)
-            
-            # Skip if no fraud detections found
-            if not bounding_boxes:
-                continue
-            
-            # Save the frame and its detections
             self._save_frame_detections(frame, bounding_boxes, frame_count)
             
-            # Update previous detections for next comparison
-            previous_detections = current_detections
+            previous_bounding_boxes = bounding_boxes
     
-    def _extract_detections(self, results, yolo_model):
-        detections = []
-        
+    def _process_detection_results(self, results, yolo_model, previous_bounding_boxes, similarity_threshold):
+        current_raw_detections = []
+        bounding_boxes = []
+
+        #thuc hien get ra cac bounding box tu ket qua cua model va check similarity
+        # doi voi mot lan detect voi mot frame, se co mot list bounding box 
+        # thuc hien trich rut cac list bounding box tu ket qua cuar model 
         if results[0].boxes is not None:
             for box in results[0].boxes:
-                bbox = None
-                if hasattr(box, 'xyxy'):
-                    bbox = box.xyxy[0].tolist()
+                if not hasattr(box, 'xyxy'):
+                    continue
+                    
+                class_id = int(box.cls[0])
+                class_name = yolo_model.names[class_id]
+                confidence = float(box.conf[0])
+                bbox = box.xyxy[0].tolist()
                 
-                detections.append({
-                    'class_id': int(box.cls[0]),
-                    'class_name': yolo_model.names[int(box.cls[0])],
-                    'confidence': float(box.conf[0]),
+             
+                if class_name.lower() == "normal":
+                    continue
+                
+               
+                current_raw_detections.append({
+                    'class_id': class_id,
+                    'confidence': confidence,
                     'bbox': bbox
                 })
                 
-        return detections
+            
+                fraud_label = None
+                try:
+                    fraud_label = self.fraud_label_service.get_by_class_id(class_id)
+                except Exception as e:
+                    pass
+                
+               
+                bbox_obj = BoundingBoxDetection()
+                bbox_obj.fraudLabel = fraud_label
+                bbox_obj.confidence = confidence
+                
+              
+                x1, y1, x2, y2 = bbox
+                bbox_obj.xCenter = x1
+                bbox_obj.yCenter = y1
+                bbox_obj.width = x2 - x1
+                bbox_obj.height = y2 - y1
+                
+                bounding_boxes.append(bbox_obj)
+        
+      
+        # thuc hien kiem tra xem hai list bounding box co giong nhau hay khong
+        is_similar = self._are_detections_similar(
+            previous_bounding_boxes, 
+            current_raw_detections, 
+            bounding_boxes,
+            similarity_threshold
+        )
+        
+        return bounding_boxes, is_similar
     
-    def _filter_abnormal_detections(self, detections):
-        bounding_boxes = []
-        
-        for det in detections:
-            # Skip "normal" detections
-            if det['class_name'].lower() == "normal":
-                continue
-            
-            # Get fraud label from database
-            fraud_label = None
-            try:
-                fraud_label = self.fraud_label_service.get_by_class_id(det['class_id'])
-            except Exception as e:
-                # Continue even if label not found
-                pass
-            
-            # Create a BoundingBoxDetection object
-            bbox = BoundingBoxDetection()
-            bbox.fraudLabel = fraud_label
-            # print(f"Fraud label for class ", bbox.fraudLabel)
-            bbox.confidence = det['confidence']
-            
-            # Set bounding box coordinates
-            if det['bbox']:
-                x1, y1, x2, y2 = det['bbox']
-                bbox.xCenter = x1
-                bbox.yCenter = y1
-                bbox.width = x2 - x1
-                bbox.height = y2 - y1
-            
-            bounding_boxes.append(bbox)
-            
-        return bounding_boxes
-    
-    def _save_frame_detections(self, frame, bounding_boxes, frame_number):
-        
-        _, image_url = self.file_storage_service.save_flagged_frame(frame, frame_number)
-        
-        
-        frame_detection = FrameDetection()
-        frame_detection.imageUrl = image_url
-        frame_detection.detection = self.phase_detection
-        
-        
-        new_frame_detection = self.frame_detection_service.create(frame_detection)
-        
-        # Add bounding boxes to the frame detection
-        for bbox in bounding_boxes:
-            # Set the reference to the parent frame detection
-            bbox.frameDetection = new_frame_detection
-            
-            # Save to database
-            saved_bbox = self.bounding_box_detection_service.create(bbox)
+    def _are_detections_similar(self, prev_bounding_boxes, curr_raw_detections, curr_bounding_boxes, threshold):
 
-            print(f"save boundingbox", saved_bbox.fraudLabel)
-            # Add to the frame detection's list
-            new_frame_detection.listBoundingBoxDetection.append(saved_bbox)
+        # kiem tra xem so luong bounding box co giong nhau khong
+        if len(prev_bounding_boxes) != len(curr_bounding_boxes) or not prev_bounding_boxes:
+            return len(prev_bounding_boxes) == len(curr_bounding_boxes) == 0
         
-        # Add to the phase detection's results
-        self.phase_detection.result.append(new_frame_detection)
-    
-    def _are_detections_similar(self, prev, curr, threshold):
-        # If counts don't match or no previous detections, determine by empty status
-        if len(prev) != len(curr) or not prev:
-            return len(prev) == len(curr) == 0
+       
+       # thuc hien sap xep lai previouse_bounding boxes 
+        prev_sorted = sorted(prev_bounding_boxes, 
+                             key=lambda x: (x.fraudLabel.id if x.fraudLabel else -1, -x.confidence))
+        curr_raw_sorted = sorted(curr_raw_detections, 
+                              key=lambda x: (x['class_id'], -x['confidence']))
         
-        # Sort by class ID and confidence for comparison
-        prev_sorted = sorted(prev, key=lambda x: (x['class_id'], -x['confidence']))
-        curr_sorted = sorted(curr, key=lambda x: (x['class_id'], -x['confidence']))
         
-        # Compare each detection
-        for p, c in zip(prev_sorted, curr_sorted):
-            # If different classes or confidence differs significantly
-            if p['class_id'] != c['class_id'] or abs(p['confidence'] - c['confidence']) > (1 - threshold):
+
+        # so sanh theo tung bounding box doi tuong, neu class id khac thi khong giong, hoac la confidence chenh lech nhau khong qua 1-threshold 
+        for p, c in zip(prev_sorted, curr_raw_sorted):
+            p_class_id = p.fraudLabel.id if p.fraudLabel else -1
+            c_class_id = c['class_id']
+            
+           
+            if p_class_id != c_class_id or abs(p.confidence - c['confidence']) > (1 - threshold):
                 return False
             
-            # If bounding boxes differ significantly
-            if p['bbox'] and c['bbox']:
-                if self._calculate_iou(p['bbox'], c['bbox']) < threshold:
+           
+           # so sanh bang tham so iou. tham so iou duoc tinh bang insertion / union
+            if hasattr(p, 'xCenter') and c['bbox']:
+                p_box = [p.xCenter, p.yCenter, p.xCenter + p.width, p.yCenter + p.height]
+                if self._calculate_iou(p_box, c['bbox']) < threshold:
                     return False
-                    
+        
         return True
     
     def _calculate_iou(self, box1, box2):
+       
         # Extract coordinates
         x1, y1, x2, y2 = box1
         x1_2, y1_2, x2_2, y2_2 = box2
@@ -208,3 +190,30 @@ class VideoDetectionService:
         
         # Return IoU
         return intersection / union if union > 0 else 0.0
+    
+    def _save_frame_detections(self, frame, bounding_boxes, frame_number):
+       
+     
+        _, image_url = self.file_storage_service.save_flagged_frame(frame, frame_number)
+        
+      
+        frame_detection = FrameDetection()
+        frame_detection.imageUrl = image_url
+        frame_detection.detection = self.phase_detection
+        
+        # Save to database
+        new_frame_detection = self.frame_detection_service.create(frame_detection)
+        
+        # Add bounding boxes to the frame detection
+        for bbox in bounding_boxes:
+            # Set the reference to the parent frame detection
+            bbox.frameDetection = new_frame_detection
+            
+            # Save to database
+            saved_bbox = self.bounding_box_detection_service.create(bbox)
+            
+            # Add to the frame detection's list
+            new_frame_detection.listBoundingBoxDetection.append(saved_bbox)
+        
+        # Add to the phase detection's results
+        self.phase_detection.result.append(new_frame_detection)

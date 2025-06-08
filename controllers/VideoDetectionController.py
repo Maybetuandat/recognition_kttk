@@ -47,9 +47,10 @@ class VideoDetectionController:
                     request.files['video'], 
                     prefix='detection'
                 )
-                detection.videoUrl = video_url  
+                detection.videoUrl = video_path  
             except Exception as e:
                 return jsonify({'error': f'Failed to save video: {str(e)}'}), 500
+          
             if detection.timeDetect is None:
                 detection.timeDetect = datetime.now()
             
@@ -58,8 +59,7 @@ class VideoDetectionController:
             # Process video với detection object
             # print("chuua vao service ")
             result = self.video_detection_service.process_video(
-                detection=detection,
-                video_path=video_path
+                detection=detection
             )
             
          

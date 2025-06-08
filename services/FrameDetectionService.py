@@ -11,44 +11,33 @@ class FrameDetectionService(BaseService):
     def __init__(self):
         super().__init__()
         self.dao = FrameDetectionDAO()
-        self.phase_detection_dao = PhaseDetectionDAO()
-        self.bbox_dao = BoundingBoxDetectionDAO()
+        
+        
 
     def create(self, frame_detection):
-        frame_detection_id = self.dao.insert(frame_detection)
-        if frame_detection_id:
-            frame_detection.id = frame_detection_id
+        frame_detection= self.dao.insert(frame_detection)
+        if frame_detection:
             return frame_detection
         raise Exception("Failed to create frame detection")
 
-    def update(self, id, data):
-        existing = self.dao.find_by_id(id)
+    def update(self, frame_detection):
+        existing = self.dao.find_by_id(frame_detection.id)
         if not existing:
-            raise ValueError(f"FrameDetection with ID {id} not found")
+            raise ValueError(f"FrameDetection with ID {frame_detection.id} not found")
 
-        if 'imageUrl' in data:
-            existing.imageUrl = data['imageUrl']
-        
-        if 'detectionId' in data:
-            detection = self.detection_dao.find_by_id(data['detectionId'])
+        if 'imageUrl' in frame_detection:
+            existing.imageUrl = frame_detection['imageUrl']
+
+        if 'detectionId' in frame_detection:
+            detection = self.detection_dao.find_by_id(frame_detection['detectionId'])
             if not detection:
-                raise ValueError(f"Detection with ID {data['detectionId']} not found")
+                raise ValueError(f"Detection with ID {frame_detection['detectionId']} not found")
             existing.detection = detection
-        
-        if 'listFraud' in data:
-            existing.listFraud = data['listFraud']
 
-        # Optional: update bounding boxes
-        if 'listBoundingBoxDetection' in data:
-            # Delete all existing bounding boxes
-            self.bbox_dao.delete_by_frame_detection_id(id)
+        if 'listFraud' in frame_detection:
+            existing.listFraud = frame_detection['listFraud']
 
-            existing.listBoundingBoxDetection = []
-            for bbox_data in data['listBoundingBoxDetection']:
-                bbox = BoundingBoxDetection.from_dict(bbox_data)
-                bbox.frameDetection = existing
-                self.bbox_dao.insert(bbox)
-                existing.listBoundingBoxDetection.append(bbox)
+       
 
         if self.dao.update(existing):
             return existing
@@ -73,8 +62,5 @@ class FrameDetectionService(BaseService):
     def get_all(self):
         return self.dao.find_all()
     
-    def get_by_detection_id(self, detection_id):
-        return self.dao.find_by_detection_id(detection_id)
-    
-    def get_by_confidence_threshold(self, min_confidence):
-        return self.dao.find_by_confidence_threshold(min_confidence)
+   
+  
